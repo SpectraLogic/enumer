@@ -346,6 +346,7 @@ func (g *Generator) transformValueNames(values []Value, TransformMethod string, 
 	var sep rune
 	var upper bool
 	var json bool
+	transform := true
 	switch TransformMethod {
 	case ToLower:
 		upper = false
@@ -364,25 +365,27 @@ func (g *Generator) transformValueNames(values []Value, TransformMethod string, 
 		sep = '-'
 		upper = true
 	default:
-		return
+		transform = false
 	}
 
 	for i := range values {
 		s := values[i].name
-		if json {
-			if len(s) > 1 {
-				values[i].name = strings.ToLower(s[0:1]) + s[1:]
+		if transform {
+			if json {
+				if len(s) > 1 {
+					values[i].name = strings.ToLower(s[0:1]) + s[1:]
+				} else {
+					values[i].name = strings.ToLower(s)
+				}
 			} else {
-				values[i].name = strings.ToLower(s)
-			}
-		} else {
-			if sep != 0 {
-				s = name.Delimit(s, sep)
-			}
-			if upper {
-				values[i].name = strings.ToUpper(s)
-			} else {
-				values[i].name = strings.ToLower(s)
+				if sep != 0 {
+					s = name.Delimit(s, sep)
+				}
+				if upper {
+					values[i].name = strings.ToUpper(s)
+				} else {
+					values[i].name = strings.ToLower(s)
+				}
 			}
 		}
 		if values[i].name == empty {
