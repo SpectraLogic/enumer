@@ -10,6 +10,9 @@
 package main
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -18,7 +21,7 @@ import (
 type Golden struct {
 	name    string
 	input   string // input; the package clause is provided when running the test.
-	output  string // exected output.
+	output  string // expected output.
 	flags   map[string]bool
 	options map[string]string
 }
@@ -50,6 +53,7 @@ var golden = []Golden{
 	{"camel", camelIn, camelIgnoreLowerOut, map[string]bool{IgnoreCase: true, IncludeJSON: true, AllowNumeric: true}, map[string]string{TransformMethod: ToLower}},
 	{"camel", camelIn, camelIgnoreUpperOut, map[string]bool{IgnoreCase: true, IncludeJSON: true, AllowNumeric: true}, map[string]string{TransformMethod: ToUpper}},
 	{"camel", camelIn, camelIgnoreJSONOut, map[string]bool{IgnoreCase: true, IncludeJSON: true, AllowNumeric: true}, map[string]string{TransformMethod: ToJSON}},
+	{"primer with line Comments", primeWithLineCommentIn, primeWithLineCommentOut, map[string]bool{LineComment: true}, noOptions},
 }
 
 // Each example starts with "type XXX [u]int", with a single space separating them.
@@ -1388,6 +1392,90 @@ const (
 )
 `
 
+const primeWithLineCommentIn = `type Prime int
+const (
+	p2 Prime = 2
+	p3 Prime = 3
+	p5 Prime = 5 // GoodPrime
+	p7 Prime = 7
+	p77 Prime = 7 // Duplicate; note that p77 doesn't appear below.
+	p11 Prime = 11
+	p13 Prime = 13
+	p17 Prime = 17
+	p19 Prime = 19
+	p23 Prime = 23
+	p29 Prime = 29
+	p37 Prime = 31
+	p41 Prime = 41 // TwinPrime41
+	p43 Prime = 43 // Twin prime 43
+)
+`
+
+const primeWithLineCommentOut = `
+const _PrimeName = "p2p3GoodPrimep7p11p13p17p19p23p29p37TwinPrime41Twin prime 43"
+
+var _PrimeMap = map[Prime]string{
+	2:  _PrimeName[0:2],
+	3:  _PrimeName[2:4],
+	5:  _PrimeName[4:13],
+	7:  _PrimeName[13:15],
+	11: _PrimeName[15:18],
+	13: _PrimeName[18:21],
+	17: _PrimeName[21:24],
+	19: _PrimeName[24:27],
+	23: _PrimeName[27:30],
+	29: _PrimeName[30:33],
+	31: _PrimeName[33:36],
+	41: _PrimeName[36:47],
+	43: _PrimeName[47:60],
+}
+
+func (i Prime) String() string {
+	if str, ok := _PrimeMap[i]; ok {
+		return str
+	}
+	return fmt.Sprintf("Prime(%d)", i)
+}
+
+var _PrimeValues = []Prime{2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 41, 43}
+
+var _PrimeNameToValueMap = map[string]Prime{
+	_PrimeName[0:2]:   2,
+	_PrimeName[2:4]:   3,
+	_PrimeName[4:13]:  5,
+	_PrimeName[13:15]: 7,
+	_PrimeName[15:18]: 11,
+	_PrimeName[18:21]: 13,
+	_PrimeName[21:24]: 17,
+	_PrimeName[24:27]: 19,
+	_PrimeName[27:30]: 23,
+	_PrimeName[30:33]: 29,
+	_PrimeName[33:36]: 31,
+	_PrimeName[36:47]: 41,
+	_PrimeName[47:60]: 43,
+}
+
+// PrimeString retrieves an enum value from the enum constants string name.
+// Throws an error if the param is not part of the enum.
+func PrimeString(s string) (Prime, error) {
+	if val, ok := _PrimeNameToValueMap[s]; ok {
+		return val, nil
+	}
+	return 0, fmt.Errorf("%s does not belong to Prime values", s)
+}
+
+// PrimeValues returns all values of the enum
+func PrimeValues() []Prime {
+	return _PrimeValues
+}
+
+// IsAPrime returns "true" if the value is listed in the enum definition. "false" otherwise
+func (i Prime) IsAPrime() bool {
+	_, ok := _PrimeMap[i]
+	return ok
+}
+`
+
 func TestGolden(t *testing.T) {
 	for _, test := range golden {
 		runGoldenTest(t, test)
@@ -1398,7 +1486,24 @@ func runGoldenTest(t *testing.T, test Golden) {
 	var g Generator
 	input := "package test\n" + test.input
 	file := test.name + ".go"
-	g.parsePackage(".", []string{file}, input)
+
+	dir, err := ioutil.TempDir("", "stringer")
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	absFile := filepath.Join(dir, file)
+	err = ioutil.WriteFile(absFile, []byte(input), 0644)
+	if err != nil {
+		t.Error(err)
+	}
+	g.parsePackage([]string{absFile})
 	// Extract the name and type of the constant from the first line.
 	tokens := strings.SplitN(test.input, " ", 3)
 	if len(tokens) != 3 {
