@@ -2,6 +2,15 @@
 Enumer is a tool to generate Go code that adds useful methods to Go enums (constants with a specific type).
 It started as a fork of [Rob Pike’s Stringer tool](https://godoc.org/golang.org/x/tools/cmd/stringer).
 
+## Install
+Enumer can be installed as any other go command:
+
+```
+go get github.com/alvaroloes/enumer
+```
+After that, the `enumer` executable will be in "$GOPATH/bin" folder and you can use it with `go generate`
+
+
 ## Generated functions and methods
 When Enumer is applied to a type, it will generate:
 
@@ -135,6 +144,11 @@ The possible transform values are:
 - upper - MYTYPEVALUE
 
 - json - myTypeValue
+
+  The json transform is initialism-aware: within a run of uppercase letters,
+  the last letter starts the next word and the letters before it form an
+  initialism, so `BBGun` becomes `bbGun`, `AWSAccessKey` becomes
+  `awsAccessKey`, and `MyBBGun` becomes `myBbGun`.
 
 - snake - my_type_value
 
