@@ -145,6 +145,11 @@ The possible transform values are:
 
 - json - myTypeValue
 
+  The json transform is initialism-aware: within a run of uppercase letters,
+  the last letter starts the next word and the letters before it form an
+  initialism, so `BBGun` becomes `bbGun`, `AWSAccessKey` becomes
+  `awsAccessKey`, and `MyBBGun` becomes `myBbGun`.
+
 - snake - my_type_value
 
 - snakeu - MY_TYPE_VALUE

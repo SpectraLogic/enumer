@@ -75,3 +75,48 @@ Outer:
 		}
 	}
 }
+
+type JSONCaseTest struct {
+	input  string
+	output string
+}
+
+var jsonCaseTests = []JSONCaseTest{
+	// Simple words.
+	{"Current", "current"},
+	{"NonCurrent", "nonCurrent"},
+	{"ExternalQueues", "externalQueues"},
+	// A single letter before a word is an initialism of one.
+	{"MyKPop", "myKPop"},
+	// A leading uppercase run is an initialism; its last letter starts the
+	// next word.
+	{"BBGun", "bbGun"},
+	{"AWSAccessKey", "awsAccessKey"},
+	{"IAMUsers", "iamUsers"},
+	// An interior initialism keeps only its leading capital (title case),
+	// preserving the word-per-capital bijection with the snake transform.
+	{"MyBBGun", "myBbGun"},
+	{"MyAWSUser", "myAwsUser"},
+	// A trailing uppercase run is a word of its own.
+	{"ID", "id"},
+	{"MyID", "myId"},
+	{"EnableTLS", "enableTls"},
+	// Digits attach to the word in progress; an uppercase letter after a
+	// digit starts a new word only when it begins one (is followed by a
+	// lowercase letter), matching name.Delimit.
+	{"S3", "s3"},
+	{"AwsS3Thing", "awsS3Thing"},
+	{"HTTPServer2X", "httpServer2x"},
+	{"P2P", "p2p"},
+	// Already-lowercase input is unchanged.
+	{"p2", "p2"},
+	{"", ""},
+}
+
+func TestJSONCase(t *testing.T) {
+	for _, test := range jsonCaseTests {
+		if got := jsonCase(test.input); got != test.output {
+			t.Errorf("jsonCase(%q) = %q; want %q", test.input, got, test.output)
+		}
+	}
+}

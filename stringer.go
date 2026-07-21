@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/pascaldekloe/name"
 )
@@ -57,7 +58,7 @@ const transformationsText = `Supported transformations:
         noop:   "EnumValue" - No transformation
         upper:  "ENUMVALUE" - Upper case
         lower:  "enumvalue" - Lower case
-        json:   "enumValue" - JSON case
+        json:   "enumValue" - JSON case ("BBGun" becomes "bbGun", "MyBBGun" becomes "myBbGun")
         snake:  "enum_value" - Snake case
         snakeu: "ENUM_VALUE" - Snake upper case
         kebab:  "enum-value" - Kebab case
@@ -446,11 +447,7 @@ func (g *Generator) transformValueNames(values []Value, TransformMethod string, 
 		s := values[i].name
 		if transform {
 			if json {
-				if len(s) > 1 {
-					values[i].name = strings.ToLower(s[0:1]) + s[1:]
-				} else {
-					values[i].name = strings.ToLower(s)
-				}
+				values[i].name = jsonCase(s)
 			} else {
 				if sep != 0 {
 					s = name.Delimit(s, sep)
@@ -466,6 +463,40 @@ func (g *Generator) transformValueNames(values []Value, TransformMethod string, 
 			values[i].name = ""
 		}
 	}
+}
+
+// jsonCase converts a Go-style name to JSON (lower camel) case. The word
+// boundaries match the ones name.Delimit uses for the snake and kebab
+// transforms: a word starts at an uppercase letter that follows a lowercase
+// letter, or at an uppercase letter that begins a word (is followed by a
+// lowercase letter) after an uppercase letter or a digit. Within a run of
+// uppercase letters the last letter therefore starts the next word and the
+// letters before it form an initialism: "MyBBGun" splits into "My", "BB",
+// "Gun". The first word is lowercased entirely and each later word keeps
+// only its leading capital, so "MyBBGun" becomes "myBbGun", "AWSAccessKey"
+// becomes "awsAccessKey", and "IAMUsers" becomes "iamUsers".
+func jsonCase(s string) string {
+	runes := []rune(s)
+	var b strings.Builder
+	b.Grow(len(s))
+	word := 0 // index of the current word's first rune
+	for i, r := range runes {
+		if i > 0 && unicode.IsUpper(r) {
+			prev := runes[i-1]
+			nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+			if unicode.IsLower(prev) ||
+				((unicode.IsUpper(prev) || unicode.IsDigit(prev)) && nextIsLower) {
+				word = i
+			}
+		}
+		if word == 0 || i > word {
+			// The first word is lowercased entirely; later words keep
+			// only their leading capital.
+			r = unicode.ToLower(r)
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 // trimValueNames removes a prefix from each name
