@@ -1,4 +1,4 @@
-module github.com/SpectraLogic/enumer
+module github.com/spectralogic/enumer
 
 go 1.25.0
 
