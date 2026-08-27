@@ -33,13 +33,14 @@ import (
 )
 
 const (
-	IncludeSQL   = "sql"
-	IncludeJSON  = "json"
-	IncludeYAML  = "yaml"
-	IncludeText  = "text"
-	IgnoreCase   = "ignorecase"
-	AllowNumeric = "numeric"
-	LineComment  = "linecomment"
+	IncludeSQL    = "sql"
+	IncludeJSON   = "json"
+	IncludeJSONV2 = "jsonv2"
+	IncludeYAML   = "yaml"
+	IncludeText   = "text"
+	IgnoreCase    = "ignorecase"
+	AllowNumeric  = "numeric"
+	LineComment   = "linecomment"
 
 	TransformMethod = "transform"
 	TrimPrefix      = "trimprefix"
@@ -77,13 +78,14 @@ var transformations = map[string]struct{}{
 }
 
 var flagMap = map[string]*bool{
-	IncludeSQL:   flag.Bool(IncludeSQL, false, "if true, the Scanner and Valuer interface will be implemented."),
-	IncludeJSON:  flag.Bool(IncludeJSON, false, "if true, json marshaling methods will be generated. Default: false"),
-	IncludeYAML:  flag.Bool(IncludeYAML, false, "if true, yaml marshaling methods will be generated. Default: false"),
-	IncludeText:  flag.Bool(IncludeText, false, "if true, text marshaling methods will be generated. Default: false"),
-	IgnoreCase:   flag.Bool(IgnoreCase, false, "if true, transforming from a string ignores case. Default: false"),
-	AllowNumeric: flag.Bool(AllowNumeric, false, "if true, transforming from a string allows input of numeric values. Default: false"),
-	LineComment:  flag.Bool(LineComment, false, "use line comment text as printed text when present"),
+	IncludeSQL:    flag.Bool(IncludeSQL, false, "if true, the Scanner and Valuer interface will be implemented."),
+	IncludeJSON:   flag.Bool(IncludeJSON, false, "if true, json marshaling methods will be generated. Default: false"),
+	IncludeJSONV2: flag.Bool(IncludeJSONV2, false, "if true, encoding/json/v2 marshaling methods will be generated. Default: false"),
+	IncludeYAML:   flag.Bool(IncludeYAML, false, "if true, yaml marshaling methods will be generated. Default: false"),
+	IncludeText:   flag.Bool(IncludeText, false, "if true, text marshaling methods will be generated. Default: false"),
+	IgnoreCase:    flag.Bool(IgnoreCase, false, "if true, transforming from a string ignores case. Default: false"),
+	AllowNumeric:  flag.Bool(AllowNumeric, false, "if true, transforming from a string allows input of numeric values. Default: false"),
+	LineComment:   flag.Bool(LineComment, false, "use line comment text as printed text when present"),
 }
 
 var optionMap = map[string]*string{
@@ -186,6 +188,9 @@ func main() {
 	}
 	if flags[IncludeJSON] {
 		g.Printf("\t\"encoding/json\"\n")
+	}
+	if flags[IncludeJSONV2] {
+		g.Printf("\t\"encoding/json/jsontext\"\n")
 	}
 	if flags[AllowNumeric] {
 		g.Printf("\t\"strconv\"\n")
@@ -577,6 +582,9 @@ func (g *Generator) generate(typeName string, flags map[string]bool, options map
 
 	if flags[IncludeJSON] {
 		g.buildJSONMethods(runs, typeName, runsThreshold, flags[AllowNumeric])
+	}
+	if flags[IncludeJSONV2] {
+		g.buildJSONV2Methods(runs, typeName, runsThreshold, flags[AllowNumeric])
 	}
 	if flags[IncludeText] {
 		g.buildTextMethods(runs, typeName, runsThreshold)

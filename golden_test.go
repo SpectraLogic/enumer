@@ -37,6 +37,8 @@ var golden = []Golden{
 	{"unum", unumIn, unumOut, noFlags, noOptions},
 	{"prime", primeIn, primeOut, noFlags, noOptions},
 	{"prime", primeJsonIn, primeJsonOut, map[string]bool{IncludeJSON: true}, noOptions},
+	{"prime", primeJsonIn, primeJsonV2Out, map[string]bool{IncludeJSONV2: true}, noOptions},
+	{"prime", primeJsonIn, primeJsonV2NumericOut, map[string]bool{IncludeJSONV2: true, AllowNumeric: true}, noOptions},
 	{"prime", primeTextIn, primeTextOut, map[string]bool{IncludeText: true}, noOptions},
 	{"prime", primeYamlIn, primeYamlOut, map[string]bool{IncludeYAML: true}, noOptions},
 	{"prime", primeSqlIn, primeSqlOut, map[string]bool{IncludeSQL: true}, noOptions},
@@ -939,6 +941,208 @@ func (i *Prime) UnmarshalJSON(data []byte) error {
 
 	*i, err = PrimeString(s)
 	return err
+}
+`
+
+const primeJsonV2Out = `
+const _PrimeName = "p2p3p5p7p11p13p17p19p23p29p37p41p43"
+
+var _PrimeMap = map[Prime]string{
+	2:  _PrimeName[0:2],
+	3:  _PrimeName[2:4],
+	5:  _PrimeName[4:6],
+	7:  _PrimeName[6:8],
+	11: _PrimeName[8:11],
+	13: _PrimeName[11:14],
+	17: _PrimeName[14:17],
+	19: _PrimeName[17:20],
+	23: _PrimeName[20:23],
+	29: _PrimeName[23:26],
+	31: _PrimeName[26:29],
+	41: _PrimeName[29:32],
+	43: _PrimeName[32:35],
+}
+
+func (i Prime) String() string {
+	if str, ok := _PrimeMap[i]; ok {
+		return str
+	}
+	return fmt.Sprintf("Prime(%d)", i)
+}
+
+var _PrimeValues = []Prime{2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 41, 43}
+
+var _PrimeNameToValueMap = map[string]Prime{
+	_PrimeName[0:2]:   2,
+	_PrimeName[2:4]:   3,
+	_PrimeName[4:6]:   5,
+	_PrimeName[6:8]:   7,
+	_PrimeName[8:11]:  11,
+	_PrimeName[11:14]: 13,
+	_PrimeName[14:17]: 17,
+	_PrimeName[17:20]: 19,
+	_PrimeName[20:23]: 23,
+	_PrimeName[23:26]: 29,
+	_PrimeName[26:29]: 31,
+	_PrimeName[29:32]: 41,
+	_PrimeName[32:35]: 43,
+}
+
+// PrimeString retrieves an enum value from the enum constants string name.
+// Throws an error if the param is not part of the enum.
+func PrimeString(s string) (Prime, error) {
+	if val, ok := _PrimeNameToValueMap[s]; ok {
+		return val, nil
+	}
+	return 0, fmt.Errorf("%s does not belong to Prime values", s)
+}
+
+// PrimeValues returns all values of the enum
+func PrimeValues() []Prime {
+	return _PrimeValues
+}
+
+// IsAPrime returns "true" if the value is listed in the enum definition. "false" otherwise
+func (i Prime) IsAPrime() bool {
+	_, ok := _PrimeMap[i]
+	return ok
+}
+
+// MarshalJSONTo implements the json/v2 MarshalerTo interface for Prime
+func (i Prime) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.String(i.String()))
+}
+
+// UnmarshalJSONFrom implements the json/v2 UnmarshalerFrom interface for Prime
+func (i *Prime) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	switch k := dec.PeekKind(); k {
+	case '"':
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return err
+		}
+		*i, err = PrimeString(tok.String())
+		return err
+	default:
+		// Consume the value so that exactly one value is read from the
+		// decoder, as the json/v2 UnmarshalerFrom contract requires.
+		if err := dec.SkipValue(); err != nil {
+			return err
+		}
+		return fmt.Errorf("Prime should be a string, got %s", k)
+	}
+}
+`
+
+const primeJsonV2NumericOut = `
+const _PrimeName = "p2p3p5p7p11p13p17p19p23p29p37p41p43"
+
+var _PrimeMap = map[Prime]string{
+	2:  _PrimeName[0:2],
+	3:  _PrimeName[2:4],
+	5:  _PrimeName[4:6],
+	7:  _PrimeName[6:8],
+	11: _PrimeName[8:11],
+	13: _PrimeName[11:14],
+	17: _PrimeName[14:17],
+	19: _PrimeName[17:20],
+	23: _PrimeName[20:23],
+	29: _PrimeName[23:26],
+	31: _PrimeName[26:29],
+	41: _PrimeName[29:32],
+	43: _PrimeName[32:35],
+}
+
+func (i Prime) String() string {
+	if str, ok := _PrimeMap[i]; ok {
+		return str
+	}
+	return fmt.Sprintf("Prime(%d)", i)
+}
+
+var _PrimeValues = []Prime{2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 41, 43}
+
+var _PrimeNameToValueMap = map[string]Prime{
+	_PrimeName[0:2]:   2,
+	_PrimeName[2:4]:   3,
+	_PrimeName[4:6]:   5,
+	_PrimeName[6:8]:   7,
+	_PrimeName[8:11]:  11,
+	_PrimeName[11:14]: 13,
+	_PrimeName[14:17]: 17,
+	_PrimeName[17:20]: 19,
+	_PrimeName[20:23]: 23,
+	_PrimeName[23:26]: 29,
+	_PrimeName[26:29]: 31,
+	_PrimeName[29:32]: 41,
+	_PrimeName[32:35]: 43,
+}
+
+// PrimeString retrieves an enum value from the enum constants string name.
+// Throws an error if the param is not part of the enum.
+func PrimeString(s string) (Prime, error) {
+	if val, ok := _PrimeNameToValueMap[s]; ok {
+		return val, nil
+	}
+	i, err := strconv.Atoi(s)
+	if err == nil {
+		for _, v := range _PrimeNameToValueMap {
+			if int(v) == i {
+				return v, nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to Prime values", s)
+}
+
+// PrimeValues returns all values of the enum
+func PrimeValues() []Prime {
+	return _PrimeValues
+}
+
+// IsAPrime returns "true" if the value is listed in the enum definition. "false" otherwise
+func (i Prime) IsAPrime() bool {
+	_, ok := _PrimeMap[i]
+	return ok
+}
+
+// MarshalJSONTo implements the json/v2 MarshalerTo interface for Prime
+func (i Prime) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.String(i.String()))
+}
+
+// UnmarshalJSONFrom implements the json/v2 UnmarshalerFrom interface for Prime
+func (i *Prime) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	switch k := dec.PeekKind(); k {
+	case '"':
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return err
+		}
+		*i, err = PrimeString(tok.String())
+		return err
+	case '0':
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return err
+		}
+		val, err := tok.Int()
+		if err != nil {
+			return err
+		}
+		*i = Prime(val)
+		if !i.IsAPrime() {
+			return fmt.Errorf("Invalid value for Prime (%d)", val)
+		}
+		return nil
+	default:
+		// Consume the value so that exactly one value is read from the
+		// decoder, as the json/v2 UnmarshalerFrom contract requires.
+		if err := dec.SkipValue(); err != nil {
+			return err
+		}
+		return fmt.Errorf("Prime should be a string, got %s", k)
+	}
 }
 `
 
