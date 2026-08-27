@@ -41,6 +41,10 @@ a type implements both.
   something needs the v1 methods themselves rather than the encoding behavior: a library that type-asserts to
   `json.Marshaler`/`json.Unmarshaler`, a `json.Marshaler` interface constraint, or code that calls
   `MarshalJSON()`/`UnmarshalJSON()` directly.
+
+  Decoding `null` mirrors what the v1 methods do: `encoding/json` unmarshaled `null` into a string as a no-op that
+  left the string empty, so `null` decodes to the value whose name is the empty string when the `empty` option gives
+  the type one, and is an error otherwise.
 * When the flag `text` is provided, two additional methods will be generated, `MarshalText()` and `UnmarshalText()`. These make
 the enum conform to the `encoding.TextMarshaler` and `encoding.TextUnmarshaler` interfaces. 
 **Note:** If you use your enum values as keys in a map and you encode the map as _JSON_, you need this flag set to true to properly

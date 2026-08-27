@@ -39,6 +39,8 @@ var golden = []Golden{
 	{"prime", primeJsonIn, primeJsonOut, map[string]bool{IncludeJSON: true}, noOptions},
 	{"prime", primeJsonIn, primeJsonV2Out, map[string]bool{IncludeJSONV2: true}, noOptions},
 	{"prime", primeJsonIn, primeJsonV2NumericOut, map[string]bool{IncludeJSONV2: true, AllowNumeric: true}, noOptions},
+	{"empty", emptyJsonV2In, emptyJsonV2Out, map[string]bool{IncludeJSONV2: true}, map[string]string{EmptyValue: "VerbosityDefault"}},
+	{"empty", emptyJsonV2In, emptyJsonV2NoEmptyOut, map[string]bool{IncludeJSONV2: true}, noOptions},
 	{"prime", primeTextIn, primeTextOut, map[string]bool{IncludeText: true}, noOptions},
 	{"prime", primeYamlIn, primeYamlOut, map[string]bool{IncludeYAML: true}, noOptions},
 	{"prime", primeSqlIn, primeSqlOut, map[string]bool{IncludeSQL: true}, noOptions},
@@ -1128,7 +1130,8 @@ func (i *Prime) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 		val, err := tok.Int()
 		if err != nil {
-			return err
+			// Not an integer: report it like any other non-string kind.
+			return fmt.Errorf("Prime should be a string, got %s", k)
 		}
 		*i = Prime(val)
 		if !i.IsAPrime() {
@@ -1142,6 +1145,166 @@ func (i *Prime) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 			return err
 		}
 		return fmt.Errorf("Prime should be a string, got %s", k)
+	}
+}
+`
+
+// An enum where one of the names is mapped to the empty string, so that
+// decoding an empty name yields a value.
+const emptyJsonV2In = `type Verbosity int
+const (
+	VerbosityDefault Verbosity = iota
+	VerbosityQuiet
+	VerbosityLoud
+)
+`
+
+const emptyJsonV2Out = `
+const _VerbosityName = "VerbosityQuietVerbosityLoud"
+
+var _VerbosityIndex = [...]uint8{0, 0, 14, 27}
+
+func (i Verbosity) String() string {
+	if i < 0 || i >= Verbosity(len(_VerbosityIndex)-1) {
+		return fmt.Sprintf("Verbosity(%d)", i)
+	}
+	return _VerbosityName[_VerbosityIndex[i]:_VerbosityIndex[i+1]]
+}
+
+var _VerbosityValues = []Verbosity{0, 1, 2}
+
+var _VerbosityNameToValueMap = map[string]Verbosity{
+	_VerbosityName[0:0]:   0,
+	_VerbosityName[0:14]:  1,
+	_VerbosityName[14:27]: 2,
+}
+
+// VerbosityString retrieves an enum value from the enum constants string name.
+// Throws an error if the param is not part of the enum.
+func VerbosityString(s string) (Verbosity, error) {
+	if val, ok := _VerbosityNameToValueMap[s]; ok {
+		return val, nil
+	}
+	return 0, fmt.Errorf("%s does not belong to Verbosity values", s)
+}
+
+// VerbosityValues returns all values of the enum
+func VerbosityValues() []Verbosity {
+	return _VerbosityValues
+}
+
+// IsAVerbosity returns "true" if the value is listed in the enum definition. "false" otherwise
+func (i Verbosity) IsAVerbosity() bool {
+	for _, v := range _VerbosityValues {
+		if i == v {
+			return true
+		}
+	}
+	return false
+}
+
+// MarshalJSONTo implements the json/v2 MarshalerTo interface for Verbosity
+func (i Verbosity) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.String(i.String()))
+}
+
+// UnmarshalJSONFrom implements the json/v2 UnmarshalerFrom interface for Verbosity
+func (i *Verbosity) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	switch k := dec.PeekKind(); k {
+	case '"':
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return err
+		}
+		*i, err = VerbosityString(tok.String())
+		return err
+	case 'n':
+		// encoding/json unmarshaled null into a string as a no-op that
+		// left the string empty, and this type maps the empty name to a
+		// value, so decode null the same way.
+		if _, err := dec.ReadToken(); err != nil {
+			return err
+		}
+		var err error
+		*i, err = VerbosityString("")
+		return err
+	default:
+		// Consume the value so that exactly one value is read from the
+		// decoder, as the json/v2 UnmarshalerFrom contract requires.
+		if err := dec.SkipValue(); err != nil {
+			return err
+		}
+		return fmt.Errorf("Verbosity should be a string, got %s", k)
+	}
+}
+`
+
+const emptyJsonV2NoEmptyOut = `
+const _VerbosityName = "VerbosityDefaultVerbosityQuietVerbosityLoud"
+
+var _VerbosityIndex = [...]uint8{0, 16, 30, 43}
+
+func (i Verbosity) String() string {
+	if i < 0 || i >= Verbosity(len(_VerbosityIndex)-1) {
+		return fmt.Sprintf("Verbosity(%d)", i)
+	}
+	return _VerbosityName[_VerbosityIndex[i]:_VerbosityIndex[i+1]]
+}
+
+var _VerbosityValues = []Verbosity{0, 1, 2}
+
+var _VerbosityNameToValueMap = map[string]Verbosity{
+	_VerbosityName[0:16]:  0,
+	_VerbosityName[16:30]: 1,
+	_VerbosityName[30:43]: 2,
+}
+
+// VerbosityString retrieves an enum value from the enum constants string name.
+// Throws an error if the param is not part of the enum.
+func VerbosityString(s string) (Verbosity, error) {
+	if val, ok := _VerbosityNameToValueMap[s]; ok {
+		return val, nil
+	}
+	return 0, fmt.Errorf("%s does not belong to Verbosity values", s)
+}
+
+// VerbosityValues returns all values of the enum
+func VerbosityValues() []Verbosity {
+	return _VerbosityValues
+}
+
+// IsAVerbosity returns "true" if the value is listed in the enum definition. "false" otherwise
+func (i Verbosity) IsAVerbosity() bool {
+	for _, v := range _VerbosityValues {
+		if i == v {
+			return true
+		}
+	}
+	return false
+}
+
+// MarshalJSONTo implements the json/v2 MarshalerTo interface for Verbosity
+func (i Verbosity) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.String(i.String()))
+}
+
+// UnmarshalJSONFrom implements the json/v2 UnmarshalerFrom interface for Verbosity
+func (i *Verbosity) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	switch k := dec.PeekKind(); k {
+	case '"':
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return err
+		}
+		*i, err = VerbosityString(tok.String())
+		return err
+	default:
+		// Consume the value so that exactly one value is read from the
+		// decoder, as the json/v2 UnmarshalerFrom contract requires.
+		if err := dec.SkipValue(); err != nil {
+			return err
+		}
+		return fmt.Errorf("Verbosity should be a string, got %s", k)
 	}
 }
 `
