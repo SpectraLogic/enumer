@@ -26,6 +26,21 @@ be almost meaningless or hard to trace or use by a human.
   * Method `IsA<Type>()`: returns true only if the current value is among the values of the enum. Useful for validations.
 * When the flag `json` is provided, two additional methods will be generated, `MarshalJSON()` and `UnmarshalJSON()`. These make
 the enum conform to the `json.Marshaler` and `json.Unmarshaler` interfaces. Very useful to use it in JSON APIs.
+* When the flag `jsonv2` is provided, two additional methods will be generated, `MarshalJSONTo()` and
+`UnmarshalJSONFrom()`. These make the enum conform to the `encoding/json/v2.MarshalerTo` and
+`encoding/json/v2.UnmarshalerFrom` interfaces. These are the streaming interfaces preferred by `encoding/json/v2`,
+so they are both faster and more flexible than the v1 methods. The generated code imports
+`encoding/json/jsontext`, which requires Go 1.27 or newer (or Go 1.25/1.26 built with `GOEXPERIMENT=jsonv2`).
+The `json` and `jsonv2` flags are independent and can be combined; `encoding/json/v2` prefers the v2 methods when
+a type implements both.
+
+  `jsonv2` does not imply `json`: with `jsonv2` alone, no `MarshalJSON()`/`UnmarshalJSON()` methods are generated.
+  You usually don't need them anyway, because on any toolchain where the generated code compiles, the `jsonv2`
+  experiment is active and the v1 `encoding/json` package is implemented on top of v2 — so `json.Marshal` and
+  `json.Unmarshal` honor the v2 methods and the enum still encodes as its string name. Add `json` as well when
+  something needs the v1 methods themselves rather than the encoding behavior: a library that type-asserts to
+  `json.Marshaler`/`json.Unmarshaler`, a `json.Marshaler` interface constraint, or code that calls
+  `MarshalJSON()`/`UnmarshalJSON()` directly.
 * When the flag `text` is provided, two additional methods will be generated, `MarshalText()` and `UnmarshalText()`. These make
 the enum conform to the `encoding.TextMarshaler` and `encoding.TextUnmarshaler` interfaces. 
 **Note:** If you use your enum values as keys in a map and you encode the map as _JSON_, you need this flag set to true to properly
@@ -132,7 +147,7 @@ name := MyTypeValue.String() // name => "my_type_value"
 The usage of Enumer is the same as Stringer, so you can refer to the [Stringer docs](https://godoc.org/golang.org/x/tools/cmd/stringer)
 for more information.
 
-There are four boolean flags: `json`, `text`, `yaml` and `sql`. You can use any combination of them (i.e. `enumer -type=Pill -json -text`),
+There are five boolean flags: `json`, `jsonv2`, `text`, `yaml` and `sql`. You can use any combination of them (i.e. `enumer -type=Pill -json -text`),
 
 
 To transform the enum string representation the `transform` and `trimprefix` flags

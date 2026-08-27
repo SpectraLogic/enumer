@@ -243,3 +243,59 @@ func (i *%[1]s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 func (g *Generator) buildYAMLMethods(runs [][]Value, typeName string, runsThreshold int) {
 	g.Printf(yamlMethods, typeName)
 }
+
+// Arguments to format are:
+//	[1]: type name
+//	[2]: numeric value check code (or "")
+const jsonV2Methods = `
+// MarshalJSONTo implements the json/v2 MarshalerTo interface for %[1]s
+func (i %[1]s) MarshalJSONTo(enc *jsontext.Encoder) error {
+	return enc.WriteToken(jsontext.String(i.String()))
+}
+
+// UnmarshalJSONFrom implements the json/v2 UnmarshalerFrom interface for %[1]s
+func (i *%[1]s) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	switch k := dec.PeekKind(); k {
+	case '"':
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return err
+		}
+		*i, err = %[1]sString(tok.String())
+		return err
+%[2]s	default:
+		// Consume the value so that exactly one value is read from the
+		// decoder, as the json/v2 UnmarshalerFrom contract requires.
+		if err := dec.SkipValue(); err != nil {
+			return err
+		}
+		return fmt.Errorf("%[1]s should be a string, got %%s", k)
+	}
+}
+`
+
+// Arguments to format are:
+//	[1]: type name
+const jsonV2NumericCheck = `	case '0':
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return err
+		}
+		val, err := tok.Int()
+		if err != nil {
+			return err
+		}
+		*i = %[1]s(val)
+		if !i.IsA%[1]s() {
+			return fmt.Errorf("Invalid value for %[1]s (%%d)", val)
+		}
+		return nil
+`
+
+func (g *Generator) buildJSONV2Methods(runs [][]Value, typeName string, runsThreshold int, numeric bool) {
+	var numCheck string
+	if numeric {
+		numCheck = fmt.Sprintf(jsonV2NumericCheck, typeName)
+	}
+	g.Printf(jsonV2Methods, typeName, numCheck)
+}
