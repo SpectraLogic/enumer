@@ -247,6 +247,7 @@ func (g *Generator) buildYAMLMethods(runs [][]Value, typeName string, runsThresh
 // Arguments to format are:
 //	[1]: type name
 //	[2]: numeric value check code (or "")
+//	[3]: null check code (or "")
 const jsonV2Methods = `
 // MarshalJSONTo implements the json/v2 MarshalerTo interface for %[1]s
 func (i %[1]s) MarshalJSONTo(enc *jsontext.Encoder) error {
@@ -263,7 +264,7 @@ func (i *%[1]s) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		}
 		*i, err = %[1]sString(tok.String())
 		return err
-%[2]s	default:
+%[2]s%[3]s	default:
 		// Consume the value so that exactly one value is read from the
 		// decoder, as the json/v2 UnmarshalerFrom contract requires.
 		if err := dec.SkipValue(); err != nil {
@@ -283,7 +284,8 @@ const jsonV2NumericCheck = `	case '0':
 		}
 		val, err := tok.Int()
 		if err != nil {
-			return err
+			// Not an integer: report it like any other non-string kind.
+			return fmt.Errorf("%[1]s should be a string, got %%s", k)
 		}
 		*i = %[1]s(val)
 		if !i.IsA%[1]s() {
@@ -292,10 +294,43 @@ const jsonV2NumericCheck = `	case '0':
 		return nil
 `
 
+// Arguments to format are:
+//	[1]: type name
+const jsonV2NullCheck = `	case 'n':
+		// encoding/json unmarshaled null into a string as a no-op that
+		// left the string empty, and this type maps the empty name to a
+		// value, so decode null the same way.
+		if _, err := dec.ReadToken(); err != nil {
+			return err
+		}
+		var err error
+		*i, err = %[1]sString("")
+		return err
+`
+
+// hasEmptyName reports whether any of the enum values is named the empty
+// string, which happens when the -empty option names one of them.
+func hasEmptyName(runs [][]Value) bool {
+	for _, run := range runs {
+		for _, value := range run {
+			if value.name == "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (g *Generator) buildJSONV2Methods(runs [][]Value, typeName string, runsThreshold int, numeric bool) {
 	var numCheck string
 	if numeric {
 		numCheck = fmt.Sprintf(jsonV2NumericCheck, typeName)
 	}
-	g.Printf(jsonV2Methods, typeName, numCheck)
+	// Only accept null for types where the empty name resolves to a value;
+	// for the others erroring on null is correct, as it is in encoding/json.
+	var nullCheck string
+	if hasEmptyName(runs) {
+		nullCheck = fmt.Sprintf(jsonV2NullCheck, typeName)
+	}
+	g.Printf(jsonV2Methods, typeName, numCheck, nullCheck)
 }
